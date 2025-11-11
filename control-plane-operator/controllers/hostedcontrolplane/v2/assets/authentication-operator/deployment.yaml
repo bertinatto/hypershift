@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: authentication-operator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: authentication-operator
+  template:
+    metadata:
+      annotations:
+        openshift.io/required-scc: restricted-v2
+        target.workload.openshift.io/management: '{"effect": "PreferredDuringScheduling"}'
+      labels:
+        name: authentication-operator
+    spec:
+      containers:
+      - name: authentication-operator
+        image: cluster-authentication-operator
+        imagePullPolicy: IfNotPresent
+        command:
+        - authentication-operator
+        args:
+        - operator
+        - -v=2
+        env:
+        - name: KUBECONFIG
+          value: /etc/guest-kubeconfig/kubeconfig
+        - name: OPERATOR_IMAGE_VERSION
+          value: 0.0.1-snapshot
+        - name: OPERAND_IMAGE_VERSION
+          value: 0.0.1-snapshot
+        - name: IMAGE_OAUTH_SERVER
+          value: quay.io/openshift-release-dev/ocp-v4.0-art-dev@sha256:9284d17da287a1b30e75394e6f62259c3a6944a4ecc7313c6220ea80da10d7e0
+        resources:
+          requests:
+            cpu: 10m
+            memory: 50Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+        terminationMessagePolicy: FallbackToLogsOnError
+        volumeMounts:
+        - mountPath: /etc/guest-kubeconfig
+          name: guest-kubeconfig
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      serviceAccountName: authentication-operator
+      volumes:
+      - name: guest-kubeconfig
+        secret:
+          secretName: service-network-admin-kubeconfig
